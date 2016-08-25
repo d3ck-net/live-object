@@ -1,0 +1,21 @@
+{
+  "name": "mongo-entity",
+  "version": "0.0.1",
+  "description": "a entity class for mongo collections",
+  "main": "mongo-object.js",
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "orm",
+    "mongodb",
+    "mongo",
+    "entity"
+  ],
+  "author": "Jan Manuel Schlieper",
+  "license": "MIT",
+  "readme": "README.md",
+  "dependencies": {
+    "underscore": "^1.8.3"
+  }
+}
