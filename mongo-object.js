@@ -176,7 +176,6 @@ MongoObject.publishCollections = function () {
             if (options && options.filter) {
                 _.extend(filter, options.filter);
             }
-
             var res = collection.find(filter, options ? options.limit : {});
             // var count = res.count();
             return res;
@@ -340,6 +339,166 @@ MongoObject.prototype.delete = function (cb) {
     this.beforeDelete();
     this._deleted = true;
     this.save();
+};
+
+
+MongoObject.initNode = function (options) {
+    if(options.ddp) {
+        var deasync = require('deasync');
+        MongoObject.each(function (name, type) {
+            var collectionName = name + "s";
+            global[collectionName] = MongoObject.createDDPWrapper(name, deasync,options.ddp);
+        });
+    }
+}
+
+MongoObject.createDDPWrapper = function (name,deasync,ddp) {
+    
+    return {
+        collectionName: name + 's',
+        typeName: name,
+        ctor: global[name],
+        insert: function (data, cb) {
+            var done = false;
+            ddp.call('ddpInsert', [{collection: this.collectionName, data: data}], function (err, res) {
+                //debugger;
+                done = true;
+                if (cb) {
+                    cb(err, res);
+                }
+            });
+            if (!cb) {
+                deasync.loopWhile(function () {
+                    return !done;
+                });
+            }
+
+        },
+        update: function (id, data, exclusive, cb) {
+            var done = false;
+
+            ddp.call('ddpUpdate', [{collection: this.collectionName, data: data, id: id}], function (err, res) {
+                //debugger;
+                if (cb) {
+                    cb(res);
+                }
+            });
+
+            if (!cb) {
+                deasync.loopWhile(function () {
+                    return !done;
+                });
+            }
+        },
+        find: function (search, projection, sort, cb) {
+            var ret;
+            var done = false;
+
+            ddp.call('ddpFind', [{
+                collection: this.collectionName,
+                search: search,
+                projection: projection,
+                sort: sort
+            }], function (err, res) {
+                ret = err ? err : res;
+                //debugger;
+                done = true;
+
+                if (cb) {
+                    cb(res);
+                }
+            });
+            if (!cb) {
+                deasync.loopWhile(function () {
+                    return !done;
+                });
+                return ret;
+            }
+        },
+        findOne: function (search, projection, sort, cb) {
+            var ret;
+            var done = false;
+
+            ddp.call('ddpFindOne', [{
+                collection: this.collectionName,
+                search: search,
+                projection: projection,
+                sort: sort
+            }], function (err, res) {
+                ret = err ? err : res;
+                //debugger;
+                done = true;
+
+                if (cb) {
+                    cb(res);
+                }
+            });
+            if (!cb) {
+                deasync.loopWhile(function () {
+                    return !done;
+                });
+                return ret ? new this.ctor(ret) : ret;
+            }
+        }
+    }
+};
+
+MongoObject.registerDDPMethods = function()
+{
+    
+    //TODO abstract out admin user.
+    Meteor.methods({
+        /**
+         *
+         * @param params
+         * @returns {*}
+         */
+        ddpInsert: function (params) {
+            if (this.userId == User.admin._id) {
+                var col = global[params.collection];
+                var id = col.insert(params.data);
+                return id;
+            }
+            else {
+                return false;
+            }
+        },
+        /**
+         *
+         * @param params
+         * @returns {*}
+         */
+        ddpUpdate: function (params) {
+            if (this.userId == User.admin._id) {
+                var col = global[params.collection];
+                var id = col.update(params.id._id, params.data);
+                return id;
+            }
+            else {
+                return false;
+            }
+        },
+        /**
+         *
+         * @param params
+         * @returns {any}
+         */
+        ddpFind: function (params) {
+            var col = global[params.collection];
+            var res = col.find(params.search, params.projection, params.sort).fetch();
+            return res;
+        },
+        /**
+         *
+         * @param params
+         * @returns {*|{}|any|192}
+         */
+        ddpFindOne: function (params) {
+            var col = global[params.collection];
+            var res = col.findOne(params.search, params.projection, params.sort);
+            return res;
+        }
+    });
 };
 
 
