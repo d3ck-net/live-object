@@ -176,6 +176,9 @@ MongoObject.publishCollections = function () {
             if (options && options.filter) {
                 _.extend(filter, options.filter);
             }
+            if(options && options.limit) {
+                // debugger;
+            }
             var res = collection.find(filter, options ? options.limit : {});
             // var count = res.count();
             return res;
@@ -443,7 +446,7 @@ MongoObject.createDDPWrapper = function (name,deasync,ddp) {
     }
 };
 
-MongoObject.registerDDPMethods = function()
+MongoObject.registerDDPMethods = function(auth)
 {
     
     //TODO abstract out admin user.
@@ -454,7 +457,7 @@ MongoObject.registerDDPMethods = function()
          * @returns {*}
          */
         ddpInsert: function (params) {
-            if (this.userId == User.admin._id) {
+            if (auth && auth.call(this)) {
                 var col = global[params.collection];
                 var id = col.insert(params.data);
                 return id;
@@ -469,7 +472,7 @@ MongoObject.registerDDPMethods = function()
          * @returns {*}
          */
         ddpUpdate: function (params) {
-            if (this.userId == User.admin._id) {
+            if (auth && auth.call(this)) {
                 var col = global[params.collection];
                 var id = col.update(params.id._id, params.data);
                 return id;
@@ -484,9 +487,15 @@ MongoObject.registerDDPMethods = function()
          * @returns {any}
          */
         ddpFind: function (params) {
-            var col = global[params.collection];
-            var res = col.find(params.search, params.projection, params.sort).fetch();
-            return res;
+            if (auth && auth.call(this)) {
+                var col = global[params.collection];
+                var res = col.find(params.search, params.projection, params.sort).fetch();
+                return res;
+            }
+            else
+            {
+                return [];
+            }
         },
         /**
          *
@@ -494,9 +503,15 @@ MongoObject.registerDDPMethods = function()
          * @returns {*|{}|any|192}
          */
         ddpFindOne: function (params) {
-            var col = global[params.collection];
-            var res = col.findOne(params.search, params.projection, params.sort);
-            return res;
+            if (auth && auth.call(this)) {
+                var col = global[params.collection];
+                var res = col.findOne(params.search, params.projection, params.sort);
+                return res;
+            }
+            else 
+            {
+                return null;
+            }
         }
     });
 };
