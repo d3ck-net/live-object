@@ -133,6 +133,12 @@ MongoObject.prototype.save = function (cb) {
     this._instanceId = instanceId;
 };
 
+if(Meteor && Meteor.isClient)
+{
+    MongoObject.prototype.save = _.debounce(MongoObject.prototype.save);
+    MongoObject.prototype.saveDebounced = MongoObject.prototype.save;
+}
+
 MongoObject.defaultPublish = function () {
     return {};
 };
@@ -174,9 +180,16 @@ MongoObject.publishCollections = function () {
         Meteor.publish(collectionName, function (options) {
             var filter = ctor.prototype.mongoObjectOptions.publish ? ctor.prototype.mongoObjectOptions.publish(this) : MongoObject.defaultPublish(this);
             if (options && options.filter) {
-                _.extend(filter, options.filter);
+                // debugger;
+                if (options.filter.$and) {
+                    options.filter.$and.push(filter);
+                    filter = options.filter;
+                }
+                else {
+                    _.extend(filter, options.filter);
+                }
             }
-            if(options && options.limit) {
+            if (options && options.limit) {
                 // debugger;
             }
             var res = collection.find(filter, options ? options.limit : {});
@@ -346,17 +359,17 @@ MongoObject.prototype.delete = function (cb) {
 
 
 MongoObject.initNode = function (options) {
-    if(options.ddp) {
+    if (options.ddp) {
         var deasync = require('deasync');
         MongoObject.each(function (name, type) {
             var collectionName = name + "s";
-            global[collectionName] = MongoObject.createDDPWrapper(name, deasync,options.ddp);
+            global[collectionName] = MongoObject.createDDPWrapper(name, deasync, options.ddp);
         });
     }
 }
 
-MongoObject.createDDPWrapper = function (name,deasync,ddp) {
-    
+MongoObject.createDDPWrapper = function (name, deasync, ddp) {
+
     return {
         collectionName: name + 's',
         typeName: name,
@@ -446,9 +459,8 @@ MongoObject.createDDPWrapper = function (name,deasync,ddp) {
     }
 };
 
-MongoObject.registerDDPMethods = function(auth)
-{
-    
+MongoObject.registerDDPMethods = function (auth) {
+
     //TODO abstract out admin user.
     Meteor.methods({
         /**
@@ -492,8 +504,7 @@ MongoObject.registerDDPMethods = function(auth)
                 var res = col.find(params.search, params.projection, params.sort).fetch();
                 return res;
             }
-            else
-            {
+            else {
                 return [];
             }
         },
@@ -508,8 +519,7 @@ MongoObject.registerDDPMethods = function(auth)
                 var res = col.findOne(params.search, params.projection, params.sort);
                 return res;
             }
-            else 
-            {
+            else {
                 return null;
             }
         }

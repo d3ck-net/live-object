@@ -31,9 +31,11 @@ this will create a collection called "YourClasses".
 ###use with nodejs
 
 on the metoer server start the meteor wrapper:
-
+```
 MongoObject.registerDDPMethods([authenticatonCallback]);
+```
 
 on the node side of things call:
-
+```
 MongoObject.initNode({ddp:someDDPconnection});
+```
